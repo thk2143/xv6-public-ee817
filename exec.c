@@ -7,6 +7,8 @@
 #include "x86.h"
 #include "elf.h"
 
+extern char data[];  // defined by kernel.ld
+
 int
 exec(char *path, char **argv)
 {
@@ -18,6 +20,21 @@ exec(char *path, char **argv)
   struct proghdr ph;
   pde_t *pgdir, *oldpgdir;
   struct proc *curproc = myproc();
+  oldpgdir = curproc->pgdir;
+  // kernal mapping. vm.c에서 복사한 코드
+  static struct kmap {
+    void *virt;
+    uint phys_start;
+    uint phys_end;
+    int perm;
+  } kmap[] = {
+   { (void*)KERNBASE, 0,             EXTMEM,    PTE_W}, // I/O space
+   { (void*)KERNLINK, V2P(KERNLINK), V2P(data), 0},     // kern text+rodata
+   { (void*)data,     V2P(data),     PHYSTOP,   PTE_W}, // kern data+memory
+   { (void*)DEVSPACE, DEVSPACE,      0,         PTE_W}, // more devices
+  };
+  struct kmap *k;
+
 
   begin_op();
 
@@ -35,8 +52,38 @@ exec(char *path, char **argv)
   if(elf.magic != ELF_MAGIC)
     goto bad;
 
-  if((pgdir = setupkvm()) == 0)
-    goto bad;
+  // if((pgdir = setupkvm()) == 0)
+  //   goto bad;
+  
+  // kalloc으로 4096-byte page를 할당받아 pgdir에 저장
+  if((pgdir = (pde_t*)kalloc()) == 0)
+    return 0;
+  
+  // pgdir의 모든 entry를 0으로 초기화
+  memset(pgdir, 0, PGSIZE);
+  if (P2V(PHYSTOP) > (void*)DEVSPACE)
+    panic("PHYSTOP too high");
+  
+  // oldpgdir에 저장된 kernal mapping 정보를 pgdir에 매핑
+  for(k=kmap; k<&kmap[NELEM(kmap)]; k++){
+    char *a = (char *)PGROUNDDOWN((uint)k->virt);
+    char *end = (char *)PGROUNDDOWN((uint)k->virt + (k->phys_end - k->phys_start) - 1);
+    pde_t *pde;
+
+    for (;;){
+      pde = &oldpgdir[PDX(a)];
+      // pde가 존재하지 않거나, pde가 present가 아닌 경우 bad로 이동
+      if (!(*pde & PTE_P)){
+        goto bad;
+      }
+      pgdir[PDX(a)] = *pde;
+
+      if (a == end)
+        break;
+      a += PGSIZE;
+    }
+  }
+
 
   // Load program into memory.
   sz = 0;
@@ -94,7 +141,7 @@ exec(char *path, char **argv)
   safestrcpy(curproc->name, last, sizeof(curproc->name));
 
   // Commit to the user image.
-  oldpgdir = curproc->pgdir;
+  // oldpgdir = curproc->pgdir;
   curproc->pgdir = pgdir;
   curproc->sz = sz;
   curproc->tf->eip = elf.entry;  // main
