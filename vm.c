@@ -120,12 +120,16 @@ setupkvm(void)
 {
   pde_t *pgdir;
   struct kmap *k;
-
+  
+  // kalloc으로 4096-byte page를 할당받아 pgdir에 저장
   if((pgdir = (pde_t*)kalloc()) == 0)
     return 0;
+
+  // pgdir의 모든 entry를 0으로 초기화
   memset(pgdir, 0, PGSIZE);
   if (P2V(PHYSTOP) > (void*)DEVSPACE)
     panic("PHYSTOP too high");
+  // kmap에 저장된 정보를 이용하여 pgdir에 매핑
   for(k = kmap; k < &kmap[NELEM(kmap)]; k++)
     if(mappages(pgdir, k->virt, k->phys_end - k->phys_start,
                 (uint)k->phys_start, k->perm) < 0) {
@@ -283,17 +287,21 @@ deallocuvm(pde_t *pgdir, uint oldsz, uint newsz)
 void
 freevm(pde_t *pgdir)
 {
-  uint i;
+  // unused variable
+  // uint i;
 
   if(pgdir == 0)
     panic("freevm: no pgdir");
   deallocuvm(pgdir, KERNBASE, 0);
-  for(i = 0; i < NPDENTRIES; i++){
-    if(pgdir[i] & PTE_P){
-      char * v = P2V(PTE_ADDR(pgdir[i]));
-      kfree(v);
-    }
-  }
+  // kernel area에 있는 page table은 공유되므로 free하지 않음
+  // for(i = 0; i < NPDENTRIES; i++){
+  //   if(pgdir[i] & PTE_P){
+  //     char * v = P2V(PTE_ADDR(pgdir[i]));
+  //     kfree(v);
+  //   }
+  // }
+
+  // page directory를 free
   kfree((char*)pgdir);
 }
 
@@ -319,9 +327,40 @@ copyuvm(pde_t *pgdir, uint sz)
   pte_t *pte;
   uint pa, i, flags;
   char *mem;
+  struct kmap *k;
 
-  if((d = setupkvm()) == 0)
+  // if((d = setupkvm()) == 0)
+  //   return 0;
+  
+  // kalloc으로 4096-byte page를 할당받아 d에 저장
+  if((d = (pde_t*)kalloc()) == 0)
     return 0;
+
+  // pgdir의 모든 entry를 0으로 초기화
+  memset(d, 0, PGSIZE);
+  if (P2V(PHYSTOP) > (void*)DEVSPACE)
+    panic("PHYSTOP too high");
+  
+  // pgdir에 저장된 kernal mapping 정보(page table)를 d에 매핑  
+  for(k=kmap; k<&kmap[NELEM(kmap)]; k++){
+    char *a = (char *)PGROUNDDOWN((uint)k->virt);
+    char *last = (char *)PGROUNDDOWN((uint)k->virt + (k->phys_end - k->phys_start) - 1);
+    pde_t *pde;
+
+    for (;;){
+      pde = &pgdir[PDX(a)];
+      // pde가 존재하지 않거나, pde가 present가 아닌 경우 bad로 이동
+      if (!(*pde & PTE_P)){
+        goto bad;
+      }
+      d[PDX(a)] = *pde;
+
+      if (a == last)
+        break;
+      a += PGSIZE;
+    }
+  }
+
   for(i = 0; i < sz; i += PGSIZE){
     if((pte = walkpgdir(pgdir, (void *) i, 0)) == 0)
       panic("copyuvm: pte should exist");
