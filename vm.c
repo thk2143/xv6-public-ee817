@@ -287,19 +287,19 @@ deallocuvm(pde_t *pgdir, uint oldsz, uint newsz)
 void
 freevm(pde_t *pgdir)
 {
-  // unused variable
-  // uint i;
+  uint i;
 
   if(pgdir == 0)
     panic("freevm: no pgdir");
+  // user area에 있는 pte를 free
   deallocuvm(pgdir, KERNBASE, 0);
-  // kernel area에 있는 page table은 공유되므로 free하지 않음
-  // for(i = 0; i < NPDENTRIES; i++){
-  //   if(pgdir[i] & PTE_P){
-  //     char * v = P2V(PTE_ADDR(pgdir[i]));
-  //     kfree(v);
-  //   }
-  // }
+  // user area에 있는 pde를 free. kernel area에 있는 page table은 공유되므로 free하지 않음
+  for(i = 0; i < PDX(KERNBASE); i++){
+    if(pgdir[i] & PTE_P){
+      char * v = P2V(PTE_ADDR(pgdir[i]));
+      kfree(v);
+    }
+  }
 
   // page directory를 free
   kfree((char*)pgdir);
