@@ -1,5 +1,5 @@
 #include "types.h"
-#include “user.h”
+#include "user.h"
 #include "fcntl.h"
 
 int
@@ -12,7 +12,7 @@ main()
   for (i = 0; i<10; i++) {
     pid = fork();
     if (pid) {
-      printf(1, "process %d is createdn", i);
+      printf(1, "process %d is created\n", i);
       sleep(100);
     }
     else
@@ -27,7 +27,7 @@ main()
   }
   else {
     testlock();
-    printf(1, "%d have acquired lockn", i);
+    printf(1, "%d have acquired lock\n", i);
     testlock();
   }
 
