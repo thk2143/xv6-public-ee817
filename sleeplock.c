@@ -18,10 +18,12 @@ enqueue(struct sleeplock *lk)
 
   if (lk->head == 0) {
     lk->head = node;
-    lk->tail = node;
   } else {
-    lk->tail->next = node;
-    lk->tail = node;
+    struct proc *temp = lk->head;
+    while (temp->next != 0) {
+      temp = temp->next;
+    }
+    temp->next = node;
   }
 }
 
@@ -33,12 +35,7 @@ dequeue(struct sleeplock *lk)
   }
 
   struct proc *node = lk->head;
-  if (lk->head == lk->tail) {
-    lk->head = 0;
-    lk->tail = 0;
-  } else {
-    lk->head = node->next;
-  }
+  lk->head = node->next;
 
   return node;
 }
@@ -51,7 +48,6 @@ initsleeplock(struct sleeplock *lk, char *name)
   lk->locked = 0;
   lk->pid = 0;
   lk->head = 0;
-  lk->tail = 0;
 }
 
 void
