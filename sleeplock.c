@@ -53,10 +53,11 @@ initsleeplock(struct sleeplock *lk, char *name)
 void
 acquiresleep(struct sleeplock *lk)
 {
+  struct proc *p = myproc();
   acquire(&lk->lk);
   enqueue(lk);
-  while (lk->locked || lk->head->pid != myproc()->pid) {
-    sleep(lk, &lk->lk);
+  while (lk->locked || lk->head->pid != p->pid) {
+    sleep(p, &lk->lk);
   }
   if(!dequeue(lk)) {
     panic("dequeue failed");
@@ -72,7 +73,7 @@ releasesleep(struct sleeplock *lk)
   acquire(&lk->lk);
   lk->locked = 0;
   lk->pid = 0;
-  wakeup(lk);
+  wakeup(lk->head);
   release(&lk->lk);
 }
 
