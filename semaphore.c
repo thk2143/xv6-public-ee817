@@ -10,50 +10,60 @@ initsema (struct semaphore *lk, int count){
     initlock(&lk->lk, "semaphore");
     if (count > NPROC)
         panic("semaphore: count > NPROC");
+    lk->locked = 0;
     lk->max = count;
-    lk->size = 0;
-    lk->type = 0;
+    lk->size = 0;    
     lk->whead = 0;
     lk->head = 0;    
 }
 
-int
-check (struct semaphore *lk){
-    // check current process is at the head of the waiting queue
-    if (lk->whead->p->pid != p->pid) 
-      return 1;
-    // current lock: exclusive
-    if (lk->type) 
-      return lk->size != 0;
-    // current lock: shared
-    else {
-      // check shared lock is full
-      if (lk->size == lk->max)
-        return 1;
-      // head of wainting is exclusive lock(write) and shared lock is not empty
-      if (lk->whead->p->type && lk->size)    
-        return 1;
-      return 0;
+void
+enqueue(struct semaphore *lk)
+{
+  struct proc *node = myproc();
+  node->next = 0;
+
+  if (lk->whead == 0) {
+    lk->whead = node;
+  } else {
+    struct proc *temp = lk->whead;
+    while (temp->next != 0) {
+      temp = temp->next;
     }
+    temp->next = node;
+  }
+}
+
+struct proc*
+dequeue(struct sleeplock *lk)
+{
+  if (lk->whead == 0) {
+    return 0;
+  }
+
+  struct proc *node = lk->whead;
+  lk->whead = node->next;
+
+  return node;
 }
 
 int
 downsema (struct semaphore *lk){
-    struct proc *p, *temp;
-    struct wnode *wnode;
+    struct proc *p;
+
     acquire(&lk->lk);
     p = myproc();
-    while (check(lk)){ // check current lock is shared lock and exclusive lock is at the head of the waing queue
-      sleep(p, &lk->lk);
+    enqueue(lk);
+    while (lk->locked || lk->head->pid != p->pid || lk->size == lk->max) {
+        sleep(p, &lk->lk);
     }
-    wnode = lk->whead;
+    if(!dequeue(lk)) {
+        panic("downsema: dequeue failed");
+    }
+    lk->locked = 1;
     lk->size += 1;
-    lk->type = wnode ->type;
-    
-    temp = lk->head;
-    lk->head = p;
     p->next = lk->head;
-    wakeup(lk->whead->p)
+    lk->head = p;
     release(&lk->lk);
     return lk->size;
 }
@@ -66,6 +76,7 @@ upsema (struct semaphore *lk){
     if (lk->head == 0) {
         panic("upsema: no process in acquired queue");
     }
+    node = lk->head;
     while(node != myproc()) {
         prev = node;
         node = node->next;
@@ -76,7 +87,10 @@ upsema (struct semaphore *lk){
     prev->next = node->next;
     node->next = 0;
     lk->size--;
-    wakeup(lk->whead->p);
+    if (!lk->size) {
+        lk->locked = 0;
+    }
+    wakeup(lk->whead);
     release(&lk->lk);
 
     return lk->size;
