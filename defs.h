@@ -9,6 +9,8 @@ struct spinlock;
 struct sleeplock;
 struct stat;
 struct superblock;
+// HW4
+struct semaphore;
 
 // bio.c
 void            binit(void);
@@ -185,6 +187,11 @@ void            switchuvm(struct proc*);
 void            switchkvm(void);
 int             copyout(pde_t*, uint, void*, uint);
 void            clearpteu(pde_t *pgdir, char *uva);
+
+// HW4 - semaphore.c
+void            initsema(struct semaphore *lk, int count);
+int             downsema(struct semaphore *lk);
+int             upsema(struct semaphore *lk);
 
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))
