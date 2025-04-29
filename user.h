@@ -23,8 +23,11 @@ int getpid(void);
 char* sbrk(int);
 int sleep(int);
 int uptime(void);
-// Asssignment 3
+// [hw3]
 int testlock(void);
+// [hw4]
+int sematest(int);
+int rwsematest(int);
 
 // ulib.c
 int stat(const char*, struct stat*);

@@ -1,3 +1,5 @@
+#include "param.h"
+
 struct semaphore {
   uint locked;
   struct spinlock lk;
@@ -6,5 +8,5 @@ struct semaphore {
   struct proc *whead;
 
   char *name;
-  struct proc *head;
+  int pids[NPROC];
 };

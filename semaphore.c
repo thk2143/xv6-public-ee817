@@ -1,6 +1,9 @@
 #include "types.h"
 #include "defs.h"
 #include "param.h"
+#include "x86.h"
+#include "memlayout.h"
+#include "mmu.h"
 #include "proc.h"
 #include "spinlock.h"
 #include "semaphore.h"
@@ -14,10 +17,11 @@ initsema (struct semaphore *lk, int count){
     lk->max = count;
     lk->size = 0;    
     lk->whead = 0;
-    lk->head = 0;    
+    for (int i=0; i<count; i++)
+        lk->pids[i] = 0;
 }
 
-void
+static void
 enqueue(struct semaphore *lk)
 {
   struct proc *node = myproc();
@@ -34,8 +38,8 @@ enqueue(struct semaphore *lk)
   }
 }
 
-struct proc*
-dequeue(struct sleeplock *lk)
+static struct proc*
+dequeue(struct semaphore *lk)
 {
   if (lk->whead == 0) {
     return 0;
@@ -50,11 +54,12 @@ dequeue(struct sleeplock *lk)
 int
 downsema (struct semaphore *lk){
     struct proc *p;
+    int i;
 
     acquire(&lk->lk);
     p = myproc();
     enqueue(lk);
-    while (lk->locked || lk->head->pid != p->pid || lk->size == lk->max) {
+    while (lk->whead->pid != p->pid || lk->size == lk->max) {
         sleep(p, &lk->lk);
     }
     if(!dequeue(lk)) {
@@ -62,32 +67,42 @@ downsema (struct semaphore *lk){
     }
     lk->locked = 1;
     lk->size += 1;
-    p->next = lk->head;
-    lk->head = p;
+    
+    i = 0;
+    while (i< lk->max){
+        if (lk->pids[i] == 0){
+            lk->pids[i] = p->pid;
+            break;
+        }
+        i++;
+    }
+    if (i == lk->max)
+        panic("downsema: no space in pids");
     release(&lk->lk);
     return lk->size;
 }
 
 int
 upsema (struct semaphore *lk){
-    struct proc *node, *prev;
+    struct proc *p;
+    int i;
 
     acquire(&lk->lk);
-    if (lk->head == 0) {
-        panic("upsema: no process in acquired queue");
-    }
-    node = lk->head;
-    while(node != myproc()) {
-        prev = node;
-        node = node->next;
-        if (node == 0) {
-            panic("upsema: process not found in acquired queue");
+    p = myproc();
+    
+    i = 0;
+    while (i < lk->max) {
+        if (lk->pids[i] == p->pid) {
+            lk->pids[i] = 0;
+            break;
         }
+        i++;
     }
-    prev->next = node->next;
-    node->next = 0;
-    lk->size--;
-    if (!lk->size) {
+    if (i == lk->max)
+        panic("upsema: no pid in pids");
+
+    lk->size -= 1;
+    if (lk->size == 0) {
         lk->locked = 0;
     }
     wakeup(lk->whead);

@@ -103,8 +103,11 @@ extern int sys_unlink(void);
 extern int sys_wait(void);
 extern int sys_write(void);
 extern int sys_uptime(void);
-// Asssignment 3
+// [hw3]
 extern int sys_testlock(void);
+// [hw4]
+extern int sys_sematest(void);
+extern int sys_rwsematest(void);
 
 static int (*syscalls[])(void) = {
 [SYS_fork]    sys_fork,
@@ -128,8 +131,11 @@ static int (*syscalls[])(void) = {
 [SYS_link]    sys_link,
 [SYS_mkdir]   sys_mkdir,
 [SYS_close]   sys_close,
-// Asssignment 3
+// [hw3]
 [SYS_testlock] sys_testlock,
+// [hw4]
+[SYS_sematest] sys_sematest,
+[SYS_rwsematest] sys_rwsematest,
 };
 
 void

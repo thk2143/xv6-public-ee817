@@ -446,7 +446,7 @@ sys_pipe(void)
   return 0;
 }
 
-// Asssignment 3
+// [hw3]
 int
 sys_testlock(void)
 {
@@ -460,7 +460,7 @@ sys_testlock(void)
   return 0;
 }
 
-// HW4
+// [hw4]
 int 
 sys_sematest(void)
 {

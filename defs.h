@@ -11,6 +11,7 @@ struct stat;
 struct superblock;
 // HW4
 struct semaphore;
+struct rwsemaphore;
 
 // bio.c
 void            binit(void);
@@ -192,6 +193,13 @@ void            clearpteu(pde_t *pgdir, char *uva);
 void            initsema(struct semaphore *lk, int count);
 int             downsema(struct semaphore *lk);
 int             upsema(struct semaphore *lk);
+
+// HW4 - rwsemaphore.c
+void            initrwsema(struct rwsemaphore *lk);
+void            downreadsema(struct rwsemaphore *lk);
+void            upreadsema(struct rwsemaphore *lk);
+void            downwritesema(struct rwsemaphore *lk);
+void            upwritesema(struct rwsemaphore *lk);
 
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))

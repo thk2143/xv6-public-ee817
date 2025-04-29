@@ -20,5 +20,8 @@
 #define SYS_link   19
 #define SYS_mkdir  20
 #define SYS_close  21
-// Asssignment 3
+// [hw3]
 #define SYS_testlock 22
+// [hw4]
+#define SYS_sematest 23
+#define SYS_rwsematest 24
