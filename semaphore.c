@@ -1,8 +1,15 @@
+#include "types.h"
+#include "defs.h"
+#include "param.h"
+#include "proc.h"
+#include "spinlock.h"
 #include "semaphore.h"
 
 void
 initsema (struct semaphore *lk, int count){
     initlock(&lk->lk, "semaphore");
+    if (count > NPROC)
+        panic("semaphore: count > NPROC");
     lk->max = count;
     lk->size = 0;
     lk->type = 0;
