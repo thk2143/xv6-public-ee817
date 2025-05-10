@@ -158,7 +158,7 @@ _forktest: forktest.o $(ULIB)
 	$(LD) $(LDFLAGS) -N -e main -Ttext 0 -o _forktest forktest.o ulib.o usys.o
 	$(OBJDUMP) -S _forktest > forktest.asm
 
-_uthread: uthread.o uthread_switch.o $(ULIB)
+_uthread: uthread.o uthread_switch.o
 	$(LD) $(LDFLAGS) -N -e main -Ttext 0 -o _uthread uthread.o uthread_switch.o $(ULIB)
 	$(OBJDUMP) -S _uthread > uthread.asm
 
@@ -188,14 +188,6 @@ UPROGS=\
 	_wc\
 	_zombie\
 	_test\
-	_practice1\
-	_practice2\
-	_practice3\
-	_practice4\
-	_practice5\
-	_practice6\
-	_practice7\
-	_practice8\
 	_testlock\
 	_sematest\
 	_rwsematest\
@@ -236,7 +228,7 @@ QEMUGDB = $(shell if $(QEMU) -help | grep -q '^-gdb'; \
 	then echo "-gdb tcp::$(GDBPORT)"; \
 	else echo "-s -p $(GDBPORT)"; fi)
 ifndef CPUS
-CPUS := 1
+CPUS := 2
 endif
 QEMUOPTS = -drive file=fs.img,index=1,media=disk,format=raw -drive file=xv6.img,index=0,media=disk,format=raw -smp $(CPUS) -m 512 $(QEMUEXTRA)
 
