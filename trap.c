@@ -40,7 +40,17 @@ trap(struct trapframe *tf)
     if(myproc()->killed)
       exit();
     myproc()->tf = tf;
+    myproc()->in_syscall = 1;
     syscall();
+    myproc()->in_syscall = 0;
+
+    if(myproc()->scheduler_flag){
+      myproc()->tf->esp -= sizeof(uint);
+      *(uint*)(myproc()->tf->esp) = myproc()->tf->eip;
+      myproc()->tf->eip = myproc()->scheduler;
+      myproc()->scheduler_flag = 0;
+    }
+
     if(myproc()->killed)
       exit();
     return;
@@ -55,6 +65,20 @@ trap(struct trapframe *tf)
       release(&tickslock);
     }
     lapiceoi();
+    // [hw5] part 3
+    struct proc *p=myproc();
+    if(p == 0)
+      break;
+    if(p->scheduler) {
+      if((tf->cs&3) == DPL_USER) {
+        tf->esp -= sizeof(uint);
+        *(uint*)(tf->esp) = tf->eip;
+        tf->eip = p->scheduler;
+      }
+      else if (tf->cs == 8 && p->in_syscall) {
+        p->scheduler_flag = 1;
+      }
+    }
     break;
   case T_IRQ0 + IRQ_IDE:
     ideintr();

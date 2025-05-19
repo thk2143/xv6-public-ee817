@@ -39,10 +39,12 @@ static void
 thread_schedule(void)
 {
   thread_p t;
-
   /* Find another runnable thread. */
   next_thread = 0;
   for (t = all_thread; t < all_thread + MAX_THREAD; t++) {
+    if (t->state == RUNNING && t != &all_thread[0]) {
+      t->state = RUNNABLE;
+    }
     if (t->state == RUNNABLE && t != current_thread) {
       next_thread = t;
       break;
@@ -79,6 +81,7 @@ thread_create(void (*func)())
   * (int *) (t->sp) = (int)func;           // push return address on stack
   t->sp -= 32;                             // space for registers that thread_switch expects
   t->state = RUNNABLE;
+  uthread_create(thread_schedule);
 }
 
 void 
@@ -94,8 +97,8 @@ mythread(void)
   int i;
   printf(1, "my thread running\n");
   for (i = 0; i < 100; i++) {
-    printf(1, "my thread 0x%x\n", (int) current_thread);
-    thread_yield();
+    printf(1, "my thread 0x%x (%d/100)\n", (int) current_thread, i);
+    //thread_yield();
   }
   printf(1, "my thread: exit\n");
   current_thread->state = FREE;

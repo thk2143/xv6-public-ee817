@@ -50,6 +50,9 @@ struct proc {
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
   struct proc *next;           // [hw3] part 3
+  uint scheduler;              // [hw5] part 3 - address of user level scheduler function
+  int in_syscall;
+  int scheduler_flag;         // [hw5] part 3 - flag to indicate if the process is in user level scheduler
 };
 
 // Process memory is laid out contiguously, low addresses first:

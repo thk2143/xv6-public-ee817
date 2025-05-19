@@ -28,6 +28,8 @@ int testlock(void);
 // [hw4]
 int sematest(int);
 int rwsematest(int);
+// [hw5]
+int uthread_create(void*);
 
 // ulib.c
 int stat(const char*, struct stat*);

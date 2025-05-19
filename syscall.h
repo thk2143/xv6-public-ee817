@@ -25,3 +25,5 @@
 // [hw4]
 #define SYS_sematest 23
 #define SYS_rwsematest 24
+// [hw5]
+#define SYS_uthread_create 25

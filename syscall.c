@@ -108,6 +108,8 @@ extern int sys_testlock(void);
 // [hw4]
 extern int sys_sematest(void);
 extern int sys_rwsematest(void);
+// [hw5]
+extern int sys_uthread_create(void);
 
 static int (*syscalls[])(void) = {
 [SYS_fork]    sys_fork,
@@ -136,6 +138,8 @@ static int (*syscalls[])(void) = {
 // [hw4]
 [SYS_sematest] sys_sematest,
 [SYS_rwsematest] sys_rwsematest,
+// [hw5]
+[SYS_uthread_create] sys_uthread_create,
 };
 
 void

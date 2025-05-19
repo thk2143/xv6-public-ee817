@@ -498,3 +498,20 @@ sys_rwsematest(void)
 
 	return 0;
 }
+
+int
+sys_uthread_create(void)
+{
+  struct proc *p;
+  int func;
+
+  if (argint(0, &func) < 0)
+    return -1;
+
+  p = myproc();
+
+  if(p->scheduler == 0)
+    p->scheduler = (uint)func;
+
+  return 0;
+}
