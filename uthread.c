@@ -41,8 +41,9 @@ thread_schedule(void)
   thread_p t;
   /* Find another runnable thread. */
   next_thread = 0;
-  for (t = all_thread; t < all_thread + MAX_THREAD; t++) {
-    if (t->state == RUNNING && t != &all_thread[0]) {
+  for (t = all_thread + 1; t < all_thread + MAX_THREAD; t++) {
+    //if (t->state == RUNNING && t != &all_thread[0]) {
+    if (t->state == RUNNING) {
       t->state = RUNNABLE;
     }
     if (t->state == RUNNABLE && t != current_thread) {
@@ -97,7 +98,7 @@ mythread(void)
   int i;
   printf(1, "my thread running\n");
   for (i = 0; i < 100; i++) {
-    printf(1, "my thread 0x%x (%d/100)\n", (int) current_thread, i);
+    printf(1, "my thread 0x%x\n", (int) current_thread);
     //thread_yield();
   }
   printf(1, "my thread: exit\n");
