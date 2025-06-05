@@ -50,6 +50,10 @@ struct log log;
 static void recover_from_log(void);
 static void commit();
 
+static int pending_checkpoint = 0;
+static struct logheader pending_lh; // for checkpoint thread
+static struct spinlock checkpoint_lock;
+
 void
 initlog(int dev)
 {
@@ -72,11 +76,21 @@ install_trans(void)
   int tail;
 
   for (tail = 0; tail < log.lh.n; tail++) {
-    // struct buf *lbuf = bread(log.dev, log.start+tail+1); // read log block
-    struct buf *dbuf = bread(log.dev, log.lh.block[tail]); // read dst
-    // memmove(dbuf->data, lbuf->data, BSIZE);  // copy block to dst
-    bwrite(dbuf);  // write dst to disk
-    // brelse(lbuf);
+    int dblock_no = log.lh.block[tail];
+    int lblock_no = log.start + tail + 1;
+
+    // Try to get destination block from cache
+    struct buf *dbuf = bread(log.dev, dblock_no); // read dst
+
+    // Check if we can safely use dbuf (in-memory cache version)
+    if (!(dbuf->flags & B_VALID) || !(dbuf->flags & B_DIRTY)) {
+      struct buf *lbuf = bread(log.dev, lblock_no); // read log block
+      memmove(dbuf->data, lbuf->data, BSIZE);  // copy block to dst
+      bwrite(dbuf);
+      brelse(lbuf);
+    } else {
+      bwrite(dbuf);
+    }
     brelse(dbuf);
   }
 }
@@ -195,7 +209,14 @@ commit()
   if (log.lh.n > 0) {
     write_log();     // Write modified blocks from cache to log
     write_head();    // Write header to disk -- the real commit
-    install_trans(); // Now install writes to home locations
+    
+    // [hw6]
+    acquire(&checkpoint_lock);
+    pending_lh = log.lh; // copy log header to pending
+    pending_checkpoint = 1; // signal checkpoint thread to run
+    wakeup(&pending_checkpoint);
+    release(&checkpoint_lock);
+    // install_trans(); // Now install writes to home locations
     log.lh.n = 0;
     write_head();    // Erase the transaction from the log
   }
@@ -232,3 +253,42 @@ log_write(struct buf *b)
   release(&log.lock);
 }
 
+// HW6
+void
+checkpoint_thread(void)
+{
+  // cprintf("checkpoint_thread: started\n");
+  initlock(&checkpoint_lock, "checkpoint_lock");
+  // cprintf("checkpoint_thread: checkpoint_lock initialized\n");
+  for(;;){
+    acquire(&checkpoint_lock);
+    // cprintf("checkpoint_thread: lock acquired\n");
+    while (!pending_checkpoint) {
+      sleep(&pending_checkpoint, &checkpoint_lock);
+      // cprintf("checkpoint_thread: waiting for pending_checkpoint\n");
+    }
+
+    pending_checkpoint = 0;
+    release(&checkpoint_lock);
+
+    for (int tail = 0; tail < pending_lh.n; tail++) {
+      int dblock_no = pending_lh.block[tail];
+      int lblock_no = log.start + tail + 1;
+
+      // Try to get destination block from cache
+      struct buf *dbuf = bread(log.dev, dblock_no); // read dst
+
+      // Check if we can safely use dbuf (in-memory cache version)
+      if (!(dbuf->flags & B_VALID) || !(dbuf->flags & B_DIRTY)) {
+        struct buf *lbuf = bread(log.dev, lblock_no); // read log block
+        memmove(dbuf->data, lbuf->data, BSIZE);  // copy block to dst
+        bwrite(dbuf);
+        brelse(lbuf);
+
+      } else {
+        bwrite(dbuf);
+      }
+      brelse(dbuf);      
+    }
+  }
+}

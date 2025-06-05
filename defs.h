@@ -89,6 +89,7 @@ void            initlog(int dev);
 void            log_write(struct buf*);
 void            begin_op();
 void            end_op();
+void            checkpoint_thread(void);
 
 // mp.c
 extern int      ismp;
@@ -123,6 +124,7 @@ void            userinit(void);
 int             wait(void);
 void            wakeup(void*);
 void            yield(void);
+int             kproc(void);
 
 // swtch.S
 void            swtch(struct context**, struct context*);

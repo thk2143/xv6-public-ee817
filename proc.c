@@ -532,3 +532,42 @@ procdump(void)
     cprintf("\n");
   }
 }
+
+// hw6
+int
+kproc()
+{
+  struct proc *p;
+  char *sp;
+  cprintf("kproc: start\n");
+  if ((p = allocproc()) == 0)
+    return -1;
+  cprintf("kproc: allocproc done\n");
+
+  p->sz = PGSIZE;
+  p->parent = initproc;
+
+  p->pgdir = copyuvm(initproc->pgdir, initproc->sz);
+  if (p->pgdir == 0) {
+    kfree(p->kstack);
+    p->kstack = 0;
+    p->state = UNUSED;
+    panic("kproc: failed to copyuvm");
+  }
+  cprintf("kproc: copyuvm done\n");
+
+  p->tf = 0;
+  sp = p->kstack + KSTACKSIZE;
+  sp -= sizeof *p->tf;
+  sp -= 4;
+  *(uint*)sp = (uint)checkpoint_thread;
+
+  safestrcpy(p->name, "cp_thread", sizeof(p->name));
+
+  acquire(&ptable.lock);
+  p->state = RUNNABLE;
+  release(&ptable.lock);
+
+  cprintf("kproc: RUNNALBLE set\n");
+  return p->pid;
+}
